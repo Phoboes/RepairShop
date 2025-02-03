@@ -1,0 +1,1 @@
+ALTER TABLE "customers" ALTER COLUMN "state" SET DATA TYPE varchar(3);
