@@ -16,7 +16,19 @@ import {
   insertCustomerSchema,
 } from "@/zod-schemas/customers";
 
+// Handles the submission of the form
+import { useAction } from "next-safe-action/hooks";
+// Custom action to save a customer
+import { saveCustomerAction } from "@/app/actions/saveCustomerAction";
+// Flashes a message to the user in the corner of the screen
+import { useToast } from "@/hooks/use-toast";
+// A widget to indicate a submission is underway
+import { LoaderCircle } from "lucide-react";
+// Custom component to display submission responses to the user
+import { DisplayServerActionResponse } from "@/components/DisplayServerActionResponse";
+
 // ? indicates that the prop is optional, if provided, it will type check against the zod schema
+
 type Props = {
   customer?: selectCustomerSchemaType;
 };
@@ -24,6 +36,8 @@ type Props = {
 export default function CustomerForm({ customer }: Props) {
   const { getPermission, isLoading } = useKindeBrowserClient();
   const isManager = !isLoading && getPermission("manager")?.isGranted;
+
+  const { toast } = useToast();
 
   // Default values are required, if no customer is povided we provide blank data to start with, or populate from the customer object provided, if provided
   const defaultValues: insertCustomerSchemaType = {
@@ -47,12 +61,35 @@ export default function CustomerForm({ customer }: Props) {
     defaultValues,
   });
 
+  const {
+    execute: executeSaveCustomer,
+    result: saveCustomerResult,
+    isExecuting: isSavingCustomer,
+    reset: resetSaveCustomer,
+  } = useAction(saveCustomerAction, {
+    onSuccess: ({ data }) => {
+      toast({
+        variant: "default",
+        title: "Success!",
+        description: data?.message,
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong",
+        description: "Save failed. Please try again.",
+      });
+    },
+  });
+
   async function submitForm(data: insertCustomerSchemaType) {
-    console.log(data);
+    executeSaveCustomer(data);
   }
 
   return (
     <div className="flex flex-col gap-1 sm:px-8 border-2 border-green-500">
+      <DisplayServerActionResponse result={saveCustomerResult} />
       <h2 className="text-2xl font-bold">
         {customer?.id ? "Edit" : "New"} customer form
       </h2>
@@ -122,15 +159,23 @@ export default function CustomerForm({ customer }: Props) {
               className="w-3/4"
               variant="default"
               title="Save"
+              disabled={isSavingCustomer}
             >
-              Submit
+              {isSavingCustomer ? (
+                <LoaderCircle className="animate-spin" />
+              ) : (
+                "Submit"
+              )}
             </Button>
             <Button
               type="button"
               className="w-1/4 p-4"
               variant="destructive"
               title="Reset"
-              onClick={() => form.reset(defaultValues)}
+              onClick={() => {
+                form.reset(defaultValues);
+                resetSaveCustomer();
+              }}
             >
               Reset
             </Button>

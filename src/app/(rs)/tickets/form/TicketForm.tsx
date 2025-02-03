@@ -16,6 +16,18 @@ import {
 } from "@/zod-schemas/tickets";
 
 import { selectCustomerSchemaType } from "@/zod-schemas/customers";
+
+// Handles the submission of the form
+import { useAction } from "next-safe-action/hooks";
+// Custom action to save a customer
+import { saveTicketAction } from "@/app/actions/saveTicketAction";
+// Flashes a message to the user in the corner of the screen
+import { useToast } from "@/hooks/use-toast";
+// A widget to indicate a submission is underway
+import { LoaderCircle } from "lucide-react";
+// Custom component to display submission responses to the user
+import { DisplayServerActionResponse } from "@/components/DisplayServerActionResponse";
+
 type Props = {
   customer: selectCustomerSchemaType;
   ticket?: selectTicketSchemaType;
@@ -31,6 +43,8 @@ export default function TicketForm({
 }: Props) {
   const isManager = Array.isArray(techs) && techs.length > 0;
 
+  const { toast } = useToast();
+
   const defaultValues: insertTicketSchemaType = {
     id: ticket?.id ?? "(New)",
     customerId: ticket?.customerId || customer.id,
@@ -45,14 +59,28 @@ export default function TicketForm({
     defaultValues,
   });
 
-  console.log(ticket);
+  const {
+    execute: executeSaveTicket,
+    result: saveTicketResult,
+    isExecuting: isSavingTicket,
+    reset: resetSaveTicket,
+  } = useAction(saveTicketAction, {
+    onSuccess: ({ data }: { data?: { message: string } | null }) => {
+      toast({
+        variant: "default",
+        title: "Success!",
+        description: data?.message || "Ticket saved successfully.",
+      });
+    },
+  });
 
   async function submitForm(data: insertTicketSchemaType) {
-    console.log(data);
+    executeSaveTicket(data);
   }
 
   return (
     <div className="flex flex-col gap-1 sm:px-8">
+      <DisplayServerActionResponse result={saveTicketResult} />
       <h2 className="text-2xl font-bold">
         {/* If there's a ticket id, determine whether the viewer is able to edit, add the appropriate heading, otherwise show the new ticket form heading. */}
         {ticket?.id
@@ -132,15 +160,23 @@ export default function TicketForm({
                 className="w-3/4"
                 variant="default"
                 title="Save"
+                disabled={isSavingTicket}
               >
-                Submit
+                {isSavingTicket ? (
+                  <LoaderCircle className="animate-spin" />
+                ) : (
+                  "Submit"
+                )}
               </Button>
               <Button
                 type="button"
                 className="w-1/4 p-4"
                 variant="destructive"
                 title="Reset"
-                onClick={() => form.reset(defaultValues)}
+                onClick={() => {
+                  form.reset(defaultValues);
+                  resetSaveTicket();
+                }}
               >
                 Reset
               </Button>

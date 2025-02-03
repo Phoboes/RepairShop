@@ -15,6 +15,13 @@
       "when": 1738556085066,
       "tag": "0001_freezing_whistler",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1738582300219,
+      "tag": "0002_condemned_agent_brand",
+      "breakpoints": true
     }
   ]
 }
