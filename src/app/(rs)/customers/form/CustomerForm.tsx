@@ -64,15 +64,17 @@ export default function CustomerForm({ customer }: Props) {
   const {
     execute: executeSaveCustomer,
     result: saveCustomerResult,
-    isExecuting: isSavingCustomer,
+    isPending: isSavingCustomer,
     reset: resetSaveCustomer,
   } = useAction(saveCustomerAction, {
     onSuccess: ({ data }) => {
-      toast({
-        variant: "default",
-        title: "Success!",
-        description: data?.message,
-      });
+      if (data?.message) {
+        toast({
+          variant: "default",
+          title: "Success!",
+          description: data?.message,
+        });
+      }
     },
     onError: () => {
       toast({
