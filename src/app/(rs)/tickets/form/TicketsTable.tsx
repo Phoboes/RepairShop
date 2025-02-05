@@ -4,7 +4,17 @@ import type { TicketSearchResultsType } from "@/lib/queries/getTicketSearchResul
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import FilteredInput from "@/components/react-table/FilteredInput";
-import { CircleCheck, CircleX, ArrowLeft, ArrowRight } from "lucide-react";
+import {
+  CircleCheck,
+  CircleX,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  ArrowDownUp,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -14,14 +24,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  createColumnHelper,
   flexRender,
-  getCoreRowModel,
+  SortingState,
   useReactTable,
-  getPaginationRowModel,
   ColumnFiltersState,
-  getFilteredRowModel,
   getFacetedUniqueValues,
+  createColumnHelper,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
 } from "@tanstack/react-table";
 
 type Props = {
@@ -30,9 +42,28 @@ type Props = {
 
 type RowType = TicketSearchResultsType[0];
 
+/**
+ * TicketsTable - A dynamic table component for displaying and managing ticket data
+ * Features:
+ * - Sortable columns
+ * - Filterable fields
+ * - Pagination
+ * - Color-coded rows based on ticket status:
+ *   - Green: Completed tickets
+ *   - Red: New/unassigned tickets (tech email is new-ticket@example.com)
+ *   - Yellow: In-progress tickets
+ * - Clickable rows that navigate to individual ticket forms
+ */
 export default function TicketsTable({ data }: Props) {
   const router = useRouter();
+
+  // State for column filtering and sorting
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "ticketDate", desc: false }, // Sort the tickets by oldest first as they have highest priority
+  ]);
+
+  /** Defines the order and which columns to display in the table */
   const columnHeadersArray: Array<keyof RowType> = [
     "id",
     "ticketDate",
@@ -42,8 +73,10 @@ export default function TicketsTable({ data }: Props) {
     "completed",
   ];
 
+  /** Creates a helper for defining column configurations */
   const columnHelper = createColumnHelper<RowType>();
 
+  /** Defines the columns for the table */
   const columns = columnHeadersArray.map((colName) =>
     columnHelper.accessor(
       (row) => {
@@ -64,7 +97,25 @@ export default function TicketsTable({ data }: Props) {
       },
       {
         id: colName,
-        header: colName[0].toUpperCase() + colName.slice(1),
+        header: ({ column }) => {
+          return (
+            <Button
+              variant="ghost"
+              className="pl-1 w-full flex justify-between"
+              onClick={() =>
+                column.toggleSorting(column.getIsSorted() === "asc")
+              }
+            >
+              {colName[0].toUpperCase() + colName.slice(1)}
+              {column.getIsSorted() === "asc" ? <ArrowUp /> : null}
+              {column.getIsSorted() === "desc" ? <ArrowDown /> : null}
+              {column.getIsSorted() !== "asc" &&
+              column.getIsSorted() !== "desc" ? (
+                <ArrowUpDown />
+              ) : null}
+            </Button>
+          );
+        },
         cell: ({ getValue }) => {
           const value = getValue();
           if (colName === "completed") {
@@ -84,19 +135,27 @@ export default function TicketsTable({ data }: Props) {
     )
   );
 
+  /**
+   * Table configuration using TanStack Table
+   * - Implements pagination with 10 items per page
+   * - Enables column filtering
+   * - Enables sorting
+   * - Maintains unique values for faceted filtering
+   */
+
   const table = useReactTable({
     data,
     columns,
-    state: { columnFilters },
+    state: { columnFilters, sorting },
     initialState: { pagination: { pageSize: 10 } },
     onColumnFiltersChange: setColumnFilters,
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    getSortedRowModel: getSortedRowModel(),
   });
-
-  //   console.log(table);
 
   const tablePages = table.getPageCount();
 
@@ -104,6 +163,11 @@ export default function TicketsTable({ data }: Props) {
     <>
       <div className="mt-6 rounded-lg overflow-hidden border border-border min-h-[450px]">
         <Table className="border-none">
+          {/* Table structure follows these steps:
+           * 1. Render header group (column titles and filter inputs)
+           * 2. Render body rows with color coding based on status
+           * 3. Each row is clickable and navigates to its ticket form
+           */}
           <TableHeader className="">
             {/* Step 1: Get all header groups (usually just one group for basic tables) */}
             {table.getHeaderGroups().map((headerGroup) => {
@@ -115,7 +179,7 @@ export default function TicketsTable({ data }: Props) {
                     // Step 4: Create a header cell for each column
                     return (
                       <TableHead key={header.id} className="bg-secondary">
-                        <div>
+                        <div className="mt-2 ml-1 font-bold">
                           {header.isPlaceholder
                             ? null
                             : flexRender(
@@ -123,6 +187,11 @@ export default function TicketsTable({ data }: Props) {
                                 header.getContext()
                               )}
                         </div>
+                        {header.column.getCanFilter() ? (
+                          <div className="grid place-content-center border rounded-lg overflow-hidden my-2 border-grey-300 dark:border-white bg-inherit">
+                            <FilteredInput column={header.column} />
+                          </div>
+                        ) : null}
                       </TableHead>
                     );
                   })}
