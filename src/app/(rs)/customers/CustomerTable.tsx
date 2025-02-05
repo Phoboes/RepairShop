@@ -51,8 +51,8 @@ export default function CustomerTable({ data }: Props) {
 
   return (
     <div className="mt-6 rounded-lg overflow-hidden border border-border">
-      <Table>
-        <TableHeader>
+      <Table className="border-none">
+        <TableHeader className="">
           {/* Step 1: Get all header groups (usually just one group for basic tables) */}
           {table.getHeaderGroups().map((headerGroup) => {
             // Step 2: Create a row for each header group
@@ -78,14 +78,18 @@ export default function CustomerTable({ data }: Props) {
             );
           })}
         </TableHeader>
-        <TableBody>
+        <TableBody className="bg-secondary border-none">
           {/* Step 1: Get all rows from the table model and map through them */}
           {table.getRowModel().rows.map((row) => {
             return (
               // Step 2: Create a row for each data entry
               <TableRow
                 key={row.id}
-                className="cursor:pointer hover:bg-border/25 dark:hover:bg-ring/40"
+                className={`cursor-pointer ${
+                  row.original.active
+                    ? "bg-green-500 hover:bg-green-500 bg-opacity-10 hover:bg-opacity-25 dark:hover:bg-opacity-25 "
+                    : "bg-red-500 hover:bg-red-500 bg-opacity-10 hover:bg-opacity-25 dark:hover:bg-opacity-25 "
+                }`}
                 // Step 3: Add click handler to navigate to customer form
                 onClick={() => {
                   router.push(`/customers/form?customerId=${row.original.id}`);
