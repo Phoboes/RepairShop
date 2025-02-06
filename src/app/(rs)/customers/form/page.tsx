@@ -1,5 +1,5 @@
 import { getCustomer } from "@/lib/queries/getCustomers";
-import BackButton from "../../../../components/BackButton";
+import BackButton from "@/components/BackButton.js";
 import * as Sentry from "@sentry/nextjs";
 import CustomerForm from "./CustomerForm";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
