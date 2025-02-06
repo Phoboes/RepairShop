@@ -2,7 +2,6 @@ import { Metadata } from "next";
 import SearchForm from "@/components/ui/SearchForm";
 import { getTicketSearchResults } from "@/lib/queries/getTicketSearchResults";
 import { getOpenTickets } from "@/lib/queries/getOpenTickets";
-import Link from "next/link";
 import TicketsTable from "./form/TicketsTable";
 
 export const metadata: Metadata = {

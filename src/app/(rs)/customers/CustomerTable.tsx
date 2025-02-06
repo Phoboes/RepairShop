@@ -10,19 +10,33 @@ import {
 } from "@/components/ui/table";
 import { type selectCustomerSchemaType } from "@/zod-schemas/customers";
 import {
+  // CellContext,
   createColumnHelper,
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useRouter } from "next/navigation";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  // DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, TableOfContents } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+// import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type Props = {
   data: selectCustomerSchemaType[];
 };
 
 export default function CustomerTable({ data }: Props) {
-  const router = useRouter();
+  // const router = useRouter();
   const columnHeadersArray: Array<keyof selectCustomerSchemaType> = [
     "firstName",
     "lastName",
@@ -36,12 +50,59 @@ export default function CustomerTable({ data }: Props) {
 
   const columnHelper = createColumnHelper<selectCustomerSchemaType>();
 
-  const columns = columnHeadersArray.map((colName) =>
-    columnHelper.accessor(colName, {
-      id: colName,
-      header: colName[0].toUpperCase() + colName.slice(1),
-    })
-  );
+  const ActionsCell = ({
+    row,
+  }: {
+    row: { original: selectCustomerSchemaType };
+  }) => {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+            <span className="sr-only">Open menu</span>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuItem>
+            <Link
+              href={`/tickets/form?customerId=${row.original.id}`}
+              className="w-full"
+              prefetch={false}
+            >
+              New Ticket
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Link
+              href={`/customers/form?customerId=${row.original.id}`}
+              className="w-full"
+              prefetch={false}
+            >
+              Edit Customer
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
+  ActionsCell.displayName = "ActionsCell"; // Need a display name to quash a lint error
+
+  const columns = [
+    columnHelper.display({
+      id: "actions",
+      header: () => <TableOfContents className="w-4 h-4" />,
+      cell: ActionsCell,
+    }),
+    ...columnHeadersArray.map((colName) =>
+      columnHelper.accessor(colName, {
+        id: colName,
+        header: colName[0].toUpperCase() + colName.slice(1),
+      })
+    ),
+  ];
 
   const table = useReactTable({
     data,
@@ -62,8 +123,19 @@ export default function CustomerTable({ data }: Props) {
                 {headerGroup.headers.map((header) => {
                   // Step 4: Create a header cell for each column
                   return (
-                    <TableHead key={header.id} className="bg-secondary">
-                      <div>
+                    <TableHead
+                      key={header.id}
+                      className={`bg-secondary ${
+                        header.id === "actions" ? "w-12" : ""
+                      }`}
+                    >
+                      <div
+                        className={`${
+                          header.id === "actions"
+                            ? "flex justify-center items-center"
+                            : ""
+                        }`}
+                      >
                         {header.isPlaceholder
                           ? null
                           : flexRender(
@@ -90,10 +162,6 @@ export default function CustomerTable({ data }: Props) {
                     ? "bg-green-500 hover:bg-green-500 bg-opacity-10 hover:bg-opacity-25 dark:hover:bg-opacity-25 "
                     : "bg-red-500 hover:bg-red-500 bg-opacity-10 hover:bg-opacity-25 dark:hover:bg-opacity-25 "
                 }`}
-                // Step 3: Add click handler to navigate to customer form
-                onClick={() => {
-                  router.push(`/customers/form?customerId=${row.original.id}`);
-                }}
               >
                 {/* Step 4: Get all visible cells for this row and map through them */}
                 {row.getVisibleCells().map((cell) => {

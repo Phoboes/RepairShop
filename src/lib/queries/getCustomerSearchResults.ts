@@ -23,5 +23,6 @@ export const getCustomerSearchResults = async (searchText: string) => {
           ${'%' + searchText.toLowerCase().replaceAll(' ', '%') + '%'}`,
       ),
     )
+    .orderBy(customers.lastName)
   return results
 }

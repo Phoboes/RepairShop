@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import SearchForm from "@/components/ui/SearchForm";
 import { getCustomerSearchResults } from "@/lib/queries/getCustomerSearchResults";
-import * as Sentry from "@sentry/nextjs";
+// import * as Sentry from "@sentry/nextjs";
 import CustomerTable from "./CustomerTable";
 
 export const metadata: Metadata = {

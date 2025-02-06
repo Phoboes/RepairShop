@@ -3,14 +3,14 @@ import DebouncedInput from "./DebouncedInput";
 
 type Props<T> = {
   column: Column<T, unknown>;
+  filteredRows: string[];
 };
 
-export default function FilteredInput<T>({ column }: Props<T>) {
+export default function FilteredInput<T>({ column, filteredRows }: Props<T>) {
   const columnFilterValue = column.getFilterValue();
+  const uniqueFilteredValues = new Set(filteredRows);
 
-  const sortedUniqueValues = Array.from(
-    column.getFacetedUniqueValues().keys()
-  ).sort();
+  const sortedUniqueValues = Array.from(uniqueFilteredValues).sort();
   return (
     <div>
       <datalist id={column.id + "list"}>
@@ -22,7 +22,7 @@ export default function FilteredInput<T>({ column }: Props<T>) {
         type="text"
         value={(columnFilterValue ?? "") as string}
         onChange={(value) => column.setFilterValue(value)}
-        placeholder={`Search (${column.getFacetedUniqueValues().size} items)`}
+        placeholder={`Search (${uniqueFilteredValues.size} items)`}
         list={column.id + "list"}
       />
     </div>

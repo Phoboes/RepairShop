@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useKindeBrowserClient } from "@kinde-oss/kinde-auth-nextjs";
+// import { useKindeBrowserClient } from "@kinde-oss/kinde-auth-nextjs";
 import { Form } from "@/components/ui/form";
 import { InputWithLabel } from "@/components/inputs/InputWithLabel";
 import { TextAreaWithLabel } from "@/components/inputs/TextAreaWithLabel";
@@ -26,40 +26,70 @@ import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle } from "lucide-react";
 // Custom component to display submission responses to the user
 import { DisplayServerActionResponse } from "@/components/DisplayServerActionResponse";
-
-// ? indicates that the prop is optional, if provided, it will type check against the zod schema
+// Used to get the customerId from the url and pass it to the form or determine whether form should be blank or not
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 type Props = {
   customer?: selectCustomerSchemaType;
+  isManager?: boolean;
 };
 
-export default function CustomerForm({ customer }: Props) {
-  const { getPermission, isLoading } = useKindeBrowserClient();
-  const isManager = !isLoading && getPermission("manager")?.isGranted;
+export default function CustomerForm({ customer, isManager = false }: Props) {
+  // Client side approach -- replaced by server side aproach in page.tsx but left for ref.
+  // const { getPermission, isLoading } = useKindeBrowserClient();
+  // const isManager = !isLoading && getPermission("manager")?.isGranted;
 
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const hasCustomerId = searchParams.get("customerId");
 
-  // Default values are required, if no customer is povided we provide blank data to start with, or populate from the customer object provided, if provided
-  const defaultValues: insertCustomerSchemaType = {
-    id: customer?.id || 0,
-    firstName: customer?.firstName || "",
-    lastName: customer?.lastName || "",
-    email: customer?.email || "",
-    phone: customer?.phone || "",
-    address1: customer?.address1 || "",
-    address2: customer?.address2 || "",
-    city: customer?.city || "",
-    state: customer?.state || "",
-    zip: customer?.zip || "",
-    notes: customer?.notes || "",
-    active: customer?.active || true,
+  // Empty values are used to populate the form with blank values if no customer ID is provided
+  const emptyValues: insertCustomerSchemaType = {
+    id: 0,
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address1: "",
+    address2: "",
+    city: "",
+    state: "",
+    zip: "",
+    notes: "",
+    active: true,
   };
+
+  // Default values are used to populate the form with the customer data, if provided, or blank values if blank/partial data is provided, if no customer ID, provide blank values above
+  const defaultValues: insertCustomerSchemaType = hasCustomerId
+    ? {
+        id: customer?.id || 0,
+        firstName: customer?.firstName || "",
+        lastName: customer?.lastName || "",
+        email: customer?.email || "",
+        phone: customer?.phone || "",
+        address1: customer?.address1 || "",
+        address2: customer?.address2 || "",
+        city: customer?.city || "",
+        state: customer?.state || "",
+        zip: customer?.zip || "",
+        notes: customer?.notes || "",
+        active: customer?.active || true,
+      }
+    : emptyValues;
 
   const form = useForm<insertCustomerSchemaType>({
     mode: "onBlur",
     resolver: zodResolver(insertCustomerSchema),
     defaultValues,
   });
+
+  // if the customerId search param changes, populate the form with the default values or blank values as required
+  useEffect(() => {
+    if (hasCustomerId) {
+      form.reset(hasCustomerId ? defaultValues : emptyValues);
+    }
+  }, [searchParams.get("customerId")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const {
     execute: executeSaveCustomer,
@@ -122,9 +152,7 @@ export default function CustomerForm({ customer }: Props) {
               nameInSchema="notes"
               className="h-24"
             />
-            {isLoading ? (
-              <p>Authenticating...</p>
-            ) : isManager && customer?.id ? (
+            {isManager && customer?.id ? (
               <CheckBoxWithLabel<insertCustomerSchemaType>
                 fieldTitle="Active"
                 nameInSchema="active"

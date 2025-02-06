@@ -7,6 +7,17 @@ import BackButton from "@/components/BackButton";
 import * as Sentry from "@sentry/nextjs";
 import TicketForm from "./TicketForm";
 
+// This is a Next.js page component for handling ticket forms (both creation and editing)
+// Key imports for functionality:
+// - Database queries (getCustomer, getTicket)
+// - Authentication (Kinde)
+// - Error tracking (Sentry)
+// - UI components (BackButton, TicketForm)
+
+// Returns different titles based on context:
+// - New ticket form
+// - New ticket for specific customer
+// - Editing existing ticket
 export async function generateMetadata({
   searchParams,
 }: {
@@ -32,7 +43,27 @@ export async function generateMetadata({
     };
   }
 }
+// The component handles several scenarios:
 
+// 1. Input validation
+// Returns error UI if neither ticketId nor customerId provided
+
+// 2. Permission checking
+// Checks if user is a manager using Kinde authentication
+
+// 3. New Ticket Flow (when customerId is present)
+// - Validates customer exists and is active
+// - For managers: fetches and provides list of all technicians
+// - Renders TicketForm with appropriate props
+
+// 4. Edit Ticket Flow (when ticketId is present)
+// - Validates ticket exists
+// - Fetches associated customer
+// - For managers: provides full tech list and edit access
+// - For regular users: only allows editing if they're the assigned technician
+
+// Error handling
+// Captures exceptions with Sentry
 export default async function TicketFormPage({
   searchParams,
 }: {
@@ -92,8 +123,8 @@ export default async function TicketFormPage({
             ? users
                 .filter((user) => user.email)
                 .map((user) => ({
-                  id: user.email as string,
-                  description: user.email as string,
+                  id: user.email!.toLowerCase() as string,
+                  description: user.email!.toLowerCase() as string,
                 }))
             : [];
           // Select all users (technicians), filter them down into an array of objects for handing to the dropdown.
@@ -102,7 +133,12 @@ export default async function TicketFormPage({
               <h2 className="text-2xl font-bold">
                 {customer.firstName} {customer.lastName}
               </h2>
-              <TicketForm customer={customer} techs={techs} />;
+              <TicketForm
+                customer={customer}
+                techs={techs}
+                isManager={isManager}
+              />
+              ;
             </>
           );
         } else {
@@ -112,7 +148,7 @@ export default async function TicketFormPage({
                 {customer.firstName} {customer.lastName}
               </h2>
 
-              <TicketForm customer={customer} />
+              <TicketForm customer={customer} isManager={isManager} />
             </>
           );
         }
@@ -155,7 +191,13 @@ export default async function TicketFormPage({
               <h2 className="text-2xl font-bold">
                 {customer.firstName} {customer.lastName}
               </h2>
-              <TicketForm customer={customer} techs={techs} ticket={ticket} />;
+              <TicketForm
+                customer={customer}
+                techs={techs}
+                ticket={ticket}
+                isManager={isManager}
+              />
+              ;
             </>
           );
         } else {
@@ -171,6 +213,7 @@ export default async function TicketFormPage({
                 customer={customer}
                 ticket={ticket}
                 isEditable={isEditable}
+                isManager={isManager}
               />
             </>
           );

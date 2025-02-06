@@ -1,8 +1,12 @@
 "use client";
 
+// api call
 import type { TicketSearchResultsType } from "@/lib/queries/getTicketSearchResults";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+// page polling component
+import { usePolling } from "@/hooks/usePolling";
+import { useState, useMemo } from "react";
+// table components
 import FilteredInput from "@/components/react-table/FilteredInput";
 import {
   CircleCheck,
@@ -12,7 +16,6 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-  ArrowDownUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,8 +39,29 @@ import {
   getPaginationRowModel,
 } from "@tanstack/react-table";
 
+import { useEffect } from "react";
+
+type TicketData = {
+  id: number;
+  ticketDate: Date;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  address1: string | null;
+  city: string | null;
+  state: string | null;
+  customerId: number | null;
+  ticketTitle: string;
+  ticketDescription: string | null;
+  ticketStatus: boolean;
+  ticketTech: string;
+  completed: boolean;
+  zip: string | null;
+};
+
 type Props = {
-  data: TicketSearchResultsType;
+  data: TicketData[];
 };
 
 type RowType = TicketSearchResultsType[0];
@@ -56,6 +80,7 @@ type RowType = TicketSearchResultsType[0];
  */
 export default function TicketsTable({ data }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // State for column filtering and sorting
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -63,15 +88,35 @@ export default function TicketsTable({ data }: Props) {
     { id: "ticketDate", desc: false }, // Sort the tickets by oldest first as they have highest priority
   ]);
 
+  // Every 30 seconds, poll the search text
+  usePolling(searchParams.get("searchText"), 30000);
+
+  const pageIndex = useMemo(() => {
+    const page = searchParams.get("page");
+    return page ? parseInt(page) - 1 : 0;
+  }, [searchParams.get("page")]); // eslint-disable-line react-hooks/exhaustive-deps
+
   /** Defines the order and which columns to display in the table */
   const columnHeadersArray: Array<keyof RowType> = [
     "id",
+    "ticketTitle",
     "ticketDate",
     "firstName",
     "lastName",
     "ticketTech",
     "completed",
   ];
+
+  //   Used to assign fixed widths to columns
+  const columnWidths = {
+    ticketTitle: 200,
+    completed: 20,
+    ticketDate: 100,
+    firstName: 100,
+    lastName: 100,
+    ticketTech: 100,
+    id: 20,
+  };
 
   /** Creates a helper for defining column configurations */
   const columnHelper = createColumnHelper<RowType>();
@@ -97,6 +142,7 @@ export default function TicketsTable({ data }: Props) {
       },
       {
         id: colName,
+        size: columnWidths[colName as keyof typeof columnWidths],
         header: ({ column }) => {
           return (
             <Button
@@ -146,8 +192,7 @@ export default function TicketsTable({ data }: Props) {
   const table = useReactTable({
     data,
     columns,
-    state: { columnFilters, sorting },
-    initialState: { pagination: { pageSize: 10 } },
+    state: { columnFilters, sorting, pagination: { pageIndex, pageSize: 10 } },
     onColumnFiltersChange: setColumnFilters,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
@@ -158,6 +203,17 @@ export default function TicketsTable({ data }: Props) {
   });
 
   const tablePages = table.getPageCount();
+  const currentPage = table.getState().pagination.pageIndex;
+
+  // If the user filters the table and reduces the amount of results, step back pagination to the first page so results are visible
+  useEffect(() => {
+    if (tablePages <= currentPage && currentPage !== 0) {
+      table.setPageIndex(0);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", "1");
+      router.replace(`?${params.toString()}`, { scroll: false });
+    }
+  }, [table.getState().columnFilters]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -176,9 +232,14 @@ export default function TicketsTable({ data }: Props) {
                 <TableRow key={headerGroup.id}>
                   {/* Step 3: Map through each header cell in this group */}
                   {headerGroup.headers.map((header) => {
+                    console.log(header);
                     // Step 4: Create a header cell for each column
                     return (
-                      <TableHead key={header.id} className="bg-secondary">
+                      <TableHead
+                        key={header.id}
+                        className="bg-secondary"
+                        style={{ width: `${header.getSize()}px` }}
+                      >
                         <div className="mt-2 ml-1 font-bold">
                           {header.isPlaceholder
                             ? null
@@ -189,7 +250,14 @@ export default function TicketsTable({ data }: Props) {
                         </div>
                         {header.column.getCanFilter() ? (
                           <div className="grid place-content-center border rounded-lg overflow-hidden my-2 border-grey-300 dark:border-white bg-inherit">
-                            <FilteredInput column={header.column} />
+                            <FilteredInput
+                              column={header.column}
+                              filteredRows={table
+                                .getFilteredRowModel()
+                                .rows.map((row) =>
+                                  row.getValue(header.column.id)
+                                )}
+                            />
                           </div>
                         ) : null}
                       </TableHead>
@@ -252,33 +320,63 @@ export default function TicketsTable({ data }: Props) {
                   : "result"
               })`}</p>
             </div>
+            {/* Paginated page navigation arrow left */}
             <div className="flex flex-row justify-around w-full py-4">
               <div
-                onClick={() => table.previousPage()}
+                onClick={() => {
+                  if (currentPage === 0) return;
+                  const newIndex = table.getState().pagination.pageIndex - 1;
+                  table.setPageIndex(newIndex);
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.set("page", (newIndex + 1).toString());
+                  router.replace(`?${params.toString()}`, { scroll: false });
+                }}
                 className="bg-transparent border-none text-black dark:text-white hover:cursor-pointer dark:hover:bg-gray-500 hover:bg-gray-200 p-2 rounded-md transition-all duration-400 ease-in-out"
               >
                 <ArrowLeft />
               </div>
+              {/* Paginated page navigation */}
               <div className="flex flex-row gap-2">
                 {Array.from({ length: tablePages }, (_, index) => {
-                  const pageState = table.getState();
                   return (
                     <div
                       key={index}
                       className={`p-2 rounded-md transition-all duration-400 ease-in-out ${
-                        index === pageState.pagination.pageIndex
+                        index === currentPage
                           ? "bg-gray-100 dark:bg-gray-600 cursor-default"
                           : "hover:cursor-pointer dark:hover:bg-gray-500 hover:bg-gray-200"
                       }`}
-                      onClick={() => table.setPageIndex(index)}
+                      onClick={() => {
+                        if (index === currentPage) {
+                          return;
+                        }
+
+                        table.setPageIndex(index);
+                        const params = new URLSearchParams(
+                          searchParams.toString()
+                        );
+                        params.set("page", (index + 1).toString());
+                        router.replace(`?${params.toString()}`, {
+                          scroll: false,
+                        });
+                      }}
                     >
                       {index + 1}
                     </div>
                   );
                 })}
               </div>
+              {/* Paginated page navigation arrow right */}
               <div
-                onClick={() => table.nextPage()}
+                onClick={() => {
+                  console.log(currentPage, table.getPageCount() - 1);
+                  if (currentPage === table.getPageCount() - 1) return;
+                  const newIndex = table.getState().pagination.pageIndex + 1;
+                  table.setPageIndex(newIndex);
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.set("page", (newIndex + 1).toString());
+                  router.replace(`?${params.toString()}`, { scroll: false });
+                }}
                 className="bg-transparent border-none text-black dark:text-white hover:cursor-pointer dark:hover:bg-gray-500 hover:bg-gray-200 p-2 rounded-md transition-all duration-400 ease-in-out"
               >
                 <ArrowRight />
@@ -287,6 +385,30 @@ export default function TicketsTable({ data }: Props) {
           </div>
         </div>
       )}
+      <div className="flex flex-row justify-center items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            table.resetSorting();
+            table.resetColumnFilters();
+            table.resetPagination();
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete("page");
+          }}
+        >
+          Reset sorting
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            router.refresh();
+          }}
+        >
+          Refresh results
+        </Button>
+      </div>
     </>
   );
 }
