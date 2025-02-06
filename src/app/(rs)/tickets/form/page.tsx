@@ -3,7 +3,7 @@ import { getTicket } from "@/lib/queries/getTickets";
 // import { useKindeBrowserClient } from "@kinde-oss/kinde-auth-nextjs";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { Users, init as KindeInit } from "@kinde/management-api-js";
-import BackButton from "@/components/BackButton";
+import BackButton from "../../../../components/BackButton";
 import * as Sentry from "@sentry/nextjs";
 import TicketForm from "./TicketForm";
 
