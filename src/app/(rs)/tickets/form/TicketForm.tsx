@@ -118,7 +118,6 @@ export default function TicketForm({
               disabled={!isEditable}
             />
 
-            {/* todo: verify this is behaving as expected. */}
             {isManager ? (
               <SelectWithLabel<insertTicketSchemaType>
                 fieldTitle="Tech ID"
